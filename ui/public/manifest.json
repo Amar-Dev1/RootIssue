@@ -3,17 +3,13 @@
   "name": "RootIssue Extension",
   "description": "Turn Github issues into a structured implmentation plan",
   "version": "1.0.0",
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "index.html",
     "default_title": "RootIssue"
   },
-  "icons": {
-    "16": "icon16.png",
-    "48": "icon48.png",
-    "128": "icon128.png"
-  },
-  "permissions": [
-    "activeTab",
-    "storage"
-  ]
-}   
+
+  "permissions": ["activeTab", "storage", "identity", "identity.email"]
+}
