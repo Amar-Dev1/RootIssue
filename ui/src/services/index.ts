@@ -29,6 +29,7 @@ export const SendToExplorerLLM = async (
         method: "POST",
         headers: {
           Accept: "application/json",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ issue, context }),
       },
@@ -48,6 +49,7 @@ export const SendToPlannerLLM = async (issue: string, filesContent: string) => {
         method: "POST",
         headers: {
           Accept: "application/json",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ issue, filesContent }),
       },
