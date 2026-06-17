@@ -1,22 +1,10 @@
 import { Context } from "hono";
-import { urlParamsType, explorerBodyType, plannerBodyType } from "../types";
+import { explorerBodyType, plannerBodyType } from "../types";
 import {
-  AuthorizeService,
   ExploreTreeService,
   GeneratePlanService,
 } from "../services/planService";
 
-export const AuthorizeController = async (c: Context) => {
-  try {
-    // @ts-ignore
-    const params = c.req.param<urlParamsType>();
-    // @ts-ignore
-    const result = await AuthorizeService(c, params);
-    return c.json({ result });
-  } catch (err) {
-    console.error(err);
-  }
-};
 
 export const ExploreTreeController = async (c: Context) => {
   try {
