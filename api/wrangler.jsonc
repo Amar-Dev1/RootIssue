@@ -7,8 +7,8 @@
 		{
 			"binding": "rootIssue_db",
 			"database_name": "rootIssue-db",
-			"database_id": "894a5077-7578-4f50-b1bc-0ae13fcd1478",
-			"remote": true
+			"database_id": "894a5077-7578-4f50-b1bc-0ae13fcd1478"
+			// "remote": true
 		},
 	],
 	// "compatibility_flags": [
