@@ -1,10 +1,10 @@
-import { IExplorerBodyType } from "../types";
+import { IExplorerBody } from "../types";
 import { getExplorerLLM } from "./llms";
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-async function testExplorerLLM(args: IExplorerBodyType) {
+async function testExplorerLLM(args: IExplorerBody) {
   return await getExplorerLLM(args);
 }
 

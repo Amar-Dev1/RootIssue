@@ -1,11 +1,11 @@
-import { IPlannerBodyType } from "../types";
+import { IPlannerBody } from "../types";
 import { getPlannerLLM } from "./llms";
 
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-async function testPlannerLLM(args: IPlannerBodyType) {
+async function testPlannerLLM(args: IPlannerBody) {
   return await getPlannerLLM(args);
 }
 

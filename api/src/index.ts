@@ -3,7 +3,6 @@ import { cors } from "hono/cors";
 import { RequestIdVariables } from "hono/request-id";
 import type { Env } from "../worker-configuration";
 import {
-  AuthorizeController,
   ExploreTreeController,
   GeneratePlanController,
 } from "./controllers/planController";
@@ -18,7 +17,7 @@ app.use(
   "/api/*",
   cors({
     allowMethods: ["GET", "POST"],
-    credentials:true
+    credentials: true,
   }),
 );
 
@@ -29,7 +28,7 @@ app.get("/h", async (c) => {
     console.error(err);
   }
 });
-app.post(`/api/v1/explore-tree/:plan`, ExploreTreeController);
+app.post("/api/v1/explore-tree", ExploreTreeController);
 app.post("api/v1/generate-plan", GeneratePlanController);
 
 export default app;

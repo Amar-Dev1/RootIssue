@@ -2,15 +2,15 @@ export type modelArguments = {
   provider?: "google" | "openai" | "anthropic";
   model?: string;
   apiKey?: string;
-  maxTokens?:number;
+  maxTokens?: number;
 };
 
-export interface IExplorerBodyType extends modelArguments {
+export interface IExplorerBody extends modelArguments {
   issue: string;
   context: string;
 }
 
-export interface IPlannerBodyType extends modelArguments {
+export interface IPlannerBody extends modelArguments {
   issue: string;
   filesContent: string;
 }

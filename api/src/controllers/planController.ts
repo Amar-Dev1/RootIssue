@@ -1,34 +1,32 @@
 import { Context } from "hono";
-import { explorerBodyType, plannerBodyType } from "../types";
+import { IExplorerBody, IPlannerBody } from "../types";
 import {
   ExploreTreeService,
   GeneratePlanService,
 } from "../services/planService";
 
-
 export const ExploreTreeController = async (c: Context) => {
-  try {
-    const input = await c.req.json<explorerBodyType>();
-    const params = c.req.param();
+    const body = await c.req.json<IExplorerBody>();
+    const apiKey = c.req.header("api-key");
 
-    if (!params.user_id || !params.plan) {
-      return c.json({ error: "Missing user_id or plan in URL" }, 400);
+    if (!apiKey) {
+      return c.json({ error: "API key is missing from headers" }, 401);
     }
-    // @ts-ignore
-    const answer = await ExploreTreeService(c, input, params);
+
+    const answer = await ExploreTreeService({...body, apiKey});
     return c.json({ result: answer });
-  } catch (err) {
-    console.error(err);
-  }
+ 
 };
 
 export const GeneratePlanController = async (c: Context) => {
-  try {
-    const input = await c.req.json<plannerBodyType>();
-    // @ts-ignore
-    const answer = await GeneratePlanService(c, input);
+    const body = await c.req.json<IPlannerBody>();
+    const apiKey = c.req.header("api-key");
+    
+     if (!apiKey) {
+      return c.json({ error: "API key is missing from headers" }, 401);
+    }
+
+    const answer = await GeneratePlanService({ ...body, apiKey });
     return c.json({ result: answer });
-  } catch (err) {
-    console.error(err);
-  }
+  
 };

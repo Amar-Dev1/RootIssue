@@ -1,18 +1,14 @@
-import { Context } from "hono";
 import { getExplorerLLM, getPlannerLLM } from "../ai/llms";
-import { explorerBodyType, plannerBodyType } from "../types";
-
+import {  IExplorerBody, IPlannerBody } from "../types";
 
 export const ExploreTreeService = async (
-  c: Context,
-  input: explorerBodyType,
-) => {
-  return await getExplorerLLM(c.env, input);
+  data: IExplorerBody,
+) => {  
+  return await getExplorerLLM(data);
 };
 
 export const GeneratePlanService = async (
-  c: Context,
-  input: plannerBodyType,
+  data: IPlannerBody,
 ) => {
-  return await getPlannerLLM(c.env, input);
+  return await getPlannerLLM(data);
 };
