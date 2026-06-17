@@ -4,12 +4,17 @@
   "description": "Turn Github issues into a structured implmentation plan",
   "version": "1.0.0",
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
     "default_popup": "index.html",
     "default_title": "RootIssue"
   },
 
-  "permissions": ["activeTab", "storage", "identity", "identity.email"]
+  "permissions": ["activeTab", "tabs", "storage", "identity", "identity.email"],
+  "host_permissions": [
+    "http://localhost/*",
+    "https://api.github.com/*"
+  ]
 }
