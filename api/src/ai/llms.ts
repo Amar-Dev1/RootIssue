@@ -1,6 +1,6 @@
 import { IExplorerBody, IPlannerBody } from "../types";
 import { SetupLLM } from "../utils/SetupLLM";
-import { ExplorerLLMPrompt, PlannerLLMPrompt } from "./Prompts";
+import { ExplorerLLMPrompt, PlannerLLMPrompt } from "./prompts";
 
 export const getExplorerLLM = async (args: IExplorerBody) => {
   const { provider, model, apiKey, issue, context } = args;

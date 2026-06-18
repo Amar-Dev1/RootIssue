@@ -3,14 +3,14 @@
 	"name": "api",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-06-13",
-	"d1_databases": [
-		{
-			"binding": "rootIssue_db",
-			"database_name": "rootIssue-db",
-			"database_id": "894a5077-7578-4f50-b1bc-0ae13fcd1478"
-			// "remote": true
-		},
-	],
+	// "d1_databases": [
+	// 	{
+	// 		"binding": "rootIssue_db",
+	// 		"database_name": "rootIssue-db",
+	// 		"database_id": "894a5077-7578-4f50-b1bc-0ae13fcd1478"
+	// 		// "remote": true
+	// 	},
+	// ],
 	"compatibility_flags": [
 	  "nodejs_compat"
 	],
