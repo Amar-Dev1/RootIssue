@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { RequestIdVariables } from "hono/request-id";
 // @ts-ignore
@@ -15,15 +15,19 @@ export type App = {
 };
 
 const app = new Hono<App>();
-app.use(
-  "/api/*",
-  cors({
-    origin: "http://localhost:5173",
+
+app.use(async (c:Context, next)=>{
+  const allowedOrigin = c.env.ALLOWED_ORIGIN || 'http://localhost:5173'
+
+  const corsMiddleware =  cors({
+    origin: allowedOrigin,
     allowMethods: ["GET", "POST", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", 'api-key'],
     credentials: true,
-  }),
-);
+  })
+
+  return corsMiddleware(c, next);
+});
 
 app.get("/h", async (c) => {
   try {
@@ -33,7 +37,7 @@ app.get("/h", async (c) => {
   }
 });
 app.post("/api/v1/explore-tree", ExploreTreeController);
-app.post("api/v1/generate-plan", GeneratePlanController);
+app.post("/api/v1/generate-plan", GeneratePlanController);
 app.get("/api/v1/fetch-models/:provider", FetchModelsController);
 
 export default app;
