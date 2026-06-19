@@ -1,37 +1,25 @@
-export const AuthorizeUser = async (user_id: string, plan: string) => {
-  try {
-    const response = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/authorize/${user_id}/${plan}`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-      },
-    );
-    const result = await response.json();
-    return result;
-  } catch (err) {
-    console.error(err);
-  }
-};
-
 export const SendToExplorerLLM = async (
   issue: string,
   context: string,
-  user_id: string,
-  plan: string,
+  provider?: string,
+  model?: string,
+  apiKey?: string,
 ) => {
   try {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    };
+    if (apiKey) {
+      headers["api-key"] = apiKey;
+    }
+
     const response = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/explore-tree/${user_id}/${plan}`,
+      `${import.meta.env.VITE_BACKEND_URL}/explore-tree`,
       {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ issue, context }),
+        headers,
+        body: JSON.stringify({ issue, context, provider, model }),
       },
     );
     const filteredFiles = await response.json();
@@ -41,17 +29,28 @@ export const SendToExplorerLLM = async (
   }
 };
 
-export const SendToPlannerLLM = async (issue: string, filesContent: string) => {
+export const SendToPlannerLLM = async (
+  issue: string, 
+  filesContent: string,
+  provider?: string,
+  model?: string,
+  apiKey?: string,
+) => {
   try {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    };
+    if (apiKey) {
+      headers["api-key"] = apiKey;
+    }
+
     const response = await fetch(
       `${import.meta.env.VITE_BACKEND_URL}/generate-plan`,
       {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ issue, filesContent }),
+        headers,
+        body: JSON.stringify({ issue, filesContent, provider, model }),
       },
     );
     const plan = await response.json();
@@ -60,3 +59,4 @@ export const SendToPlannerLLM = async (issue: string, filesContent: string) => {
     console.error(err);
   }
 };
+

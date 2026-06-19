@@ -5,17 +5,17 @@
 <p><strong>Turn GitHub Issues into structured, AI-powered implementation plans — instantly.</strong></p>
 
 <p>
-  <img src="https://img.shields.io/badge/Chrome_Extension-MV3-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Extension MV3" />
+  <img src="https://img.shields.io/badge/Web_App-Vite_+_React-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite + React" />
   <img src="https://img.shields.io/badge/Hono-API-E36002?style=flat-square&logo=hono&logoColor=white" alt="Hono API" />
   <img src="https://img.shields.io/badge/Cloudflare_Workers-F38020?style=flat-square&logo=cloudflareworkers&logoColor=white" alt="Cloudflare Workers" />
-  <img src="https://img.shields.io/badge/Gemini_2.5-AI_Powered-8E75B2?style=flat-square&logo=googlegemini&logoColor=white" alt="Gemini AI" />
+  <img src="https://img.shields.io/badge/Multi--LLM-Google_%7C_OpenAI_%7C_Anthropic-8E75B2?style=flat-square&logo=openai&logoColor=white" alt="Multi-LLM" />
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
 <p>
   <a href="#-demo">Demo</a> ·
-  <a href="#-how-it-works">How it Works</a> ·
-  <a href="#-architecture">Architecture</a> ·
+  <a href="#️-how-it-works">How it Works</a> ·
+  <a href="#️-architecture">Architecture</a> ·
   <a href="#-project-structure">Project Structure</a> ·
   <a href="#-getting-started">Getting Started</a>
 </p>
@@ -26,65 +26,79 @@
 
 ## ✨ What is RootIssue?
 
-RootIssue is a **Chrome Extension** that reads the GitHub issue you have open, intelligently identifies the most relevant source files in the repository, and uses a two-stage AI pipeline to generate a clean, focused Markdown implementation plan — right in your browser sidebar.
+RootIssue is a **web application** that reads a GitHub issue URL you paste in, intelligently identifies the most relevant source files in the repository, and uses a two-stage AI pipeline to generate a clean, focused Markdown implementation plan — right in your browser.
 
-No context switching. No manual digging. Just open an issue and click **Generate Plan**.
+No context switching. No manual digging. Just paste a GitHub issue URL and click **Generate Plan**.
+
+You can bring your own API key (Google, OpenAI, or Anthropic) or use the **3 built-in free credits** powered by the backend's own Gemini key.
 
 ---
 
 ## 🎬 Demo
 
-> *(Coming soon — short screen recording of extension in action)*
+> *(Coming soon — short screen recording of the web app in action)*
 
 ---
 
 ## ⚙️ How It Works
 
-The generation pipeline runs in **three sequential stages**, coordinated between the Chrome Extension popup and a background service worker:
+The generation pipeline runs in **four sequential stages**, coordinated between the React frontend and the Hono API backend:
 
 ```
-User opens a GitHub Issue
+User pastes a GitHub Issue URL
         │
         ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                        Chrome Extension                           │
-│                                                                   │
-│  1. Install & Setup                                               │
-│     ├─ Generate unique user_id                                    │
-│     ├─ Request GitHub token (public or private repos)            │
-│     └─ Allocate 5 daily credits (refills every 24h)              │
-│                                                                   │
-│  2. Issue Detection                                               │
-│     ├─ Parse owner/repo/issue# from the active tab URL           │
-│     ├─ Fetch issue title + body via GitHub API                   │
-│     └─ Fetch full file tree of the repository                    │
-│                                                                   │
-│  3. Generate Plan (click button → background service worker)     │
-│     ├─ Stage 1 → Send {issue, file tree} to ExplorerLLM         │
-│     ├─ Stage 2 → Fetch content of identified files from GitHub  │
-│     └─ Stage 3 → Send {issue, file contents} to PlannerLLM     │
-│                                                                   │
-│  4. Display                                                       │
-│     ├─ Render Markdown plan in popup                             │
-│     └─ Deduct 1 credit                                           │
-└───────────────────────────────────────────────────────────────────┘
-        │                             │
-        │ POST /explore-tree          │ POST /generate-plan
-        ▼                             ▼
-┌─────────────────────────────────────────────────┐
-│                  Hono API (Edge)                 │
-│                                                  │
-│  /authorize/:user_id/:plan                      │
-│  └─ Upsert user record in Cloudflare D1         │
-│                                                  │
-│  /explore-tree/:user_id/:plan                   │
-│  └─ ExplorerLLM: identify ≤5 relevant files     │
-│                                                  │
-│  /generate-plan                                  │
-│  └─ PlannerLLM: generate Markdown plan          │
-│                                                  │
-│  ⚡ Runtime: Cloudflare Workers + Gemini 2.5    │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                        React Web App (Vite)                          │
+│                                                                      │
+│  0. First-time Setup                                                 │
+│     ├─ Enter GitHub Access Token (required)                          │
+│     ├─ Choose LLM mode:                                              │
+│     │     Option A: Free credits mode (3 tries, Google/Gemini)       │
+│     │     Option B: Custom — select provider, model, enter API key   │
+│     └─ Settings saved to localStorage                                │
+│                                                                      │
+│  1. Issue Resolution                                                  │
+│     ├─ Parse owner/repo/issue# from the pasted URL                   │
+│     ├─ Fetch issue title + body via GitHub API                       │
+│     └─ Fetch full file tree of the repository                        │
+│                                                                      │
+│  2. Explore (Stage 1 API call)                                       │
+│     └─ POST /explore-tree → {issue, context, provider, model}        │
+│          ExplorerLLM returns ≤5 relevant file paths                  │
+│                                                                      │
+│  3. Fetch File Contents                                               │
+│     └─ Fetch content of each identified file from GitHub API         │
+│                                                                      │
+│  4. Plan Generation (Stage 2 API call)                               │
+│     └─ POST /generate-plan → {issue, filesContent, provider, model}  │
+│          PlannerLLM returns a Markdown implementation plan            │
+│                                                                      │
+│  5. Display                                                           │
+│     ├─ Render the Markdown plan on the right panel                   │
+│     └─ Deduct 1 credit (if using free credits mode)                  │
+└──────────────────────────────────────────────────────────────────────┘
+        │  header: { api-key: "" }                │
+        │  body: { issue, context, provider, model }
+        ▼                                         ▼
+┌─────────────────────────────────────────────────────┐
+│                    Hono API (Edge)                   │
+│                                                      │
+│  POST /api/v1/explore-tree                           │
+│  ├─ Validate api-key header                          │
+│  ├─ Validate body: provider, model required          │
+│  └─ ExplorerLLM: return ≤5 relevant file paths       │
+│                                                      │
+│  POST /api/v1/generate-plan                          │
+│  ├─ Validate api-key header                          │
+│  ├─ Validate body: provider, model required          │
+│  └─ PlannerLLM: generate Markdown plan               │
+│                                                      │
+│  GET /api/v1/fetch-models/:provider                  │
+│  └─ Return live model list for the given provider    │
+│                                                      │
+│  ⚡ Runtime: Cloudflare Workers                      │
+└─────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -95,19 +109,24 @@ User opens a GitHub Issue
 
 ### Two-Stage AI Pipeline
 
-| Stage | Model | Input | Output |
-|-------|-------|-------|--------|
-| **ExplorerLLM** | Gemini 2.5 Flash Lite | Issue text + repo file tree | Up to 5 relevant file paths |
-| **PlannerLLM** | Gemini 2.5 Flash Lite | Issue text + file contents | Markdown implementation plan |
+| Stage | Role | Input | Output |
+|-------|------|-------|--------|
+| **ExplorerLLM** | File targeting | Issue text + full repo file tree | Up to 5 relevant file paths |
+| **PlannerLLM** | Plan generation | Issue text + content of identified files | Markdown implementation plan |
 
-### Background-Aware Execution
+### Multi-LLM Support
 
-Plan generation runs inside a **Manifest V3 service worker** (`background.ts`), meaning:
+The provider and model are selected by the user and passed in every request body. The backend dynamically initialises the correct SDK:
 
-- 🔁 The request **keeps running** even if the user closes the popup mid-generation
-- 💾 Progress is persisted in `chrome.storage.local` (`GenerationStatus`)
-- 🔄 Reopening the popup **restores the exact loading state** (step 1, 2, or 3)
-- ✅ On completion, the popup reads the cached plan from storage and renders it
+| Provider | SDK |
+|----------|-----|
+| `google` | `@langchain/google-genai` |
+| `openai` | `@langchain/openai` |
+| `anthropic` | `@langchain/anthropic` |
+
+### Free Credits Mode
+
+If the user does not provide their own API key, the backend falls back to the built-in Gemini key (`VITE_GEMINI_API_KEY` in the frontend env). Users receive **3 free tries**. The provider/model selection dropdowns are disabled in this mode.
 
 ---
 
@@ -115,41 +134,41 @@ Plan generation runs inside a **Manifest V3 service worker** (`background.ts`), 
 
 ```
 RootIssue/
-├── api/                          # Hono API (Cloudflare Workers)
+├── api/                              # Hono API (Cloudflare Workers)
 │   └── src/
-│       ├── index.ts              # Route definitions
+│       ├── index.ts                  # CORS config + route definitions
 │       ├── controllers/
-│       │   └── planController.ts # Request handlers
+│       │   └── planController.ts     # Request handlers (validate, delegate)
 │       ├── services/
-│       │   └── planService.ts    # Business logic
-│       ├── ai/
-│       │   └── llms.ts           # ExplorerLLM + PlannerLLM
-│       ├── db/                   # Cloudflare D1 integration
+│       │   └── planService.ts        # ExplorerLLM + PlannerLLM orchestration
+│       │                             # Also serves GET /fetch-models/:provider
+│       ├── ai/                       # LLM prompt templates
+│       ├── utils/
+│       │   └── SetupLLM.ts           # Dynamic LLM factory (google/openai/anthropic)
 │       └── types/
-│           └── index.ts          # Shared type definitions
+│           └── index.ts              # Shared type definitions (IExplorerBody, etc.)
 │
-└── ui/                           # Chrome Extension (React + Vite)
-    ├── background.ts             # Service worker — runs generation pipeline
-    ├── public/
-    │   └── manifest.json         # MV3 manifest with host_permissions
+└── ui/                               # React Web App (Vite)
     └── src/
-        ├── App.tsx               # Main state machine + storage listeners
+        ├── App.tsx                   # Main state machine + plan generation flow
+        ├── main.tsx                  # Entry point
+        ├── style.css                 # Global design system
+        ├── types.ts                  # Frontend type definitions
         ├── components/
         │   ├── views/
-        │   │   ├── OnboardingView.tsx   # Token setup & settings
-        │   │   ├── IdleView.tsx         # Ready to generate state
-        │   │   ├── LoadingView.tsx      # Step-by-step progress UI
-        │   │   ├── ResultView.tsx       # Renders the Markdown plan
-        │   │   └── ErrorView.tsx        # Contextual error messages
-        │   ├── Header.tsx
+        │   │   ├── ConfigPanel.tsx   # Settings: GitHub token, provider, model, API key
+        │   │   ├── LoadingView.tsx   # Step-by-step progress UI (steps 1–3)
+        │   │   ├── ResultView.tsx    # Renders the Markdown plan
+        │   │   └── ErrorView.tsx     # Contextual error messages + retry
+        │   ├── Header.tsx            # App header + credits badge
         │   ├── Footer.tsx
         │   ├── IssueContextCard.tsx
-        │   └── MarkdownViewer.tsx
+        │   └── MarkdownViewer.tsx    # react-markdown + remark-gfm renderer
         ├── services/
-        │   ├── index.ts          # API client (ExplorerLLM, PlannerLLM)
-        │   └── github.ts         # GitHub API (issues, tree, file content)
+        │   ├── index.ts              # API client: SendToExplorerLLM, SendToPlannerLLM
+        │   └── github.ts             # GitHub API: issues, repo tree, file content
         └── utils/
-            └── storage.ts        # chrome.storage.local helpers + state types
+            └── storage.ts            # localStorage helpers + UserSettings type
 ```
 
 ---
@@ -159,9 +178,9 @@ RootIssue/
 ### Prerequisites
 
 - **Node.js** ≥ 18 / **Bun**
-- A **Google Gemini API Key** (two keys recommended — one per LLM stage)
-- A **Cloudflare account** (for Workers + D1 database)
-- **Chrome** or a Chromium-based browser
+- A **Gemini / OpenAI / Anthropic API Key** *(optional — only needed if not using free credits)*
+- A **GitHub Personal Access Token** (for reading private repos or avoiding rate limits)
+- A **Cloudflare account** (for deploying the Workers API)
 
 ---
 
@@ -175,9 +194,10 @@ bun install          # or: npm install
 Create a `.dev.vars` file in `api/`:
 
 ```env
-GEMINI_API_KEY1=your_explorer_gemini_key
-GEMINI_API_KEY2=your_planner_gemini_key
+GEMINI_API_KEY=your_gemini_key_used_as_fallback_for_free_credits
 ```
+
+> The API key set here acts as the **backend fallback** for users in free credits mode. Users who bring their own key pass it via the `api-key` request header.
 
 Run locally:
 
@@ -187,43 +207,62 @@ bun run dev          # Starts at http://localhost:8787
 
 ---
 
-### 2. Chrome Extension — React + Vite
+### 2. Web App — React + Vite
 
 ```bash
 cd ui
-npm install
+npm install          # or: bun install
 ```
 
 Create a `.env` file in `ui/`:
 
 ```env
 VITE_BACKEND_URL=http://localhost:8787/api/v1
+VITE_GEMINI_API_KEY=your_gemini_key_for_free_credits_mode
 ```
 
-Build the extension:
+> `VITE_GEMINI_API_KEY` is the key sent in the `api-key` header when the user is in **free credits mode** (no personal API key provided). It must match what the backend has configured.
+
+Run the dev server:
 
 ```bash
-npm run build        # Outputs to ui/dist/
+npm run dev          # Starts at http://localhost:5173
 ```
-
-Load in Chrome:
-
-1. Open `chrome://extensions`
-2. Enable **Developer mode** (top-right toggle)
-3. Click **Load unpacked** → select the `ui/dist/` folder
-4. Navigate to any GitHub issue and click the RootIssue icon
 
 ---
 
-## 🔑 Permissions
+### 3. Using the App
 
-| Permission | Purpose |
-|-----------|---------|
-| `tabs` | Read the active tab URL to detect GitHub issues |
-| `storage` | Persist settings, generation state, and cached plans |
-| `identity` | User identification |
-| `http://localhost/*` | Connect to local Hono dev server |
-| `https://api.github.com/*` | Fetch issue details, repo tree, and file contents |
+1. Open `http://localhost:5173` in your browser
+2. Enter your **GitHub Access Token** and click **Save**
+3. Choose your LLM mode:
+   - **Free credits mode** (default): uses the built-in Gemini key — 3 free tries
+   - **Custom mode**: uncheck "Use free credits mode", select a provider + model, and enter your API key
+4. Paste a **GitHub Issue URL** (e.g. `https://github.com/owner/repo/issues/42`)
+5. Click **Generate Plan** and wait for the three-stage pipeline to complete
+6. Read, copy, or regenerate the Markdown implementation plan
+
+---
+
+## 🔑 API Reference
+
+| Method | Endpoint | Auth Header | Description |
+|--------|----------|-------------|-------------|
+| `POST` | `/api/v1/explore-tree` | `api-key: <key>` | Stage 1: identify relevant files from the repo tree |
+| `POST` | `/api/v1/generate-plan` | `api-key: <key>` | Stage 2: generate the Markdown implementation plan |
+| `GET`  | `/api/v1/fetch-models/:provider` | — | Returns the live model list for `google`, `openai`, or `anthropic` |
+| `GET`  | `/h` | — | Health check |
+
+**POST body shape (both endpoints):**
+
+```json
+{
+  "issue": "Full issue text (title + body)",
+  "context": "Repo file tree string",
+  "provider": "google | openai | anthropic",
+  "model": "model-name"
+}
+```
 
 ---
 

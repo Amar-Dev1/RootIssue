@@ -5,8 +5,6 @@ import { ExplorerLLMPrompt, PlannerLLMPrompt } from "./prompts";
 export const getExplorerLLM = async (args: IExplorerBody) => {
   const { provider, model, apiKey, issue, context } = args;
 
-  console.log("body from llm: ", args);
-
   const llm = SetupLLM({ provider, model, apiKey, maxTokens: 750 });
 
   const answer = await ExplorerLLMPrompt.pipe(llm).invoke({

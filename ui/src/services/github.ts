@@ -1,14 +1,4 @@
-export const getActiveTabUrl = async (): Promise<string | null> => {
-  return new Promise((resolve) => {
-    if (!chrome?.tabs?.query) {
-      resolve(null);
-      return;
-    }
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      resolve(tabs[0]?.url || null);
-    });
-  });
-};
+
 
 export const parseGitHubIssueUrl = (url: string) => {
   const regex = /github\.com\/([^\/]+)\/([^\/]+)\/issues\/(\d+)/;
