@@ -16,7 +16,7 @@ export type App = {
 
 const app = new Hono<App>();
 
-app.use(async (c:Context, next)=>{
+app.use('*', async (c:Context, next)=>{
   const allowedOrigin = c.env.ALLOWED_ORIGIN || 'http://localhost:5173'
 
   const corsMiddleware =  cors({
