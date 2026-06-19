@@ -1,46 +1,37 @@
 import { Context } from "hono";
-import { urlParamsType, explorerBodyType, plannerBodyType } from "../types";
+import { IExplorerBody, IPlannerBody } from "../types";
 import {
-  AuthorizeService,
   ExploreTreeService,
+  FetchModelsService,
   GeneratePlanService,
 } from "../services/planService";
 
-export const AuthorizeController = async (c: Context) => {
-  try {
-    // @ts-ignore
-    const params = c.req.param<urlParamsType>();
-    // @ts-ignore
-    const result = await AuthorizeService(c, params);
-    return c.json({ result });
-  } catch (err) {
-    console.error(err);
-  }
-};
-
 export const ExploreTreeController = async (c: Context) => {
-  try {
-    const input = await c.req.json<explorerBodyType>();
-    const params = c.req.param();
+  const body = await c.req.json<IExplorerBody>();
+  const apiKey = c.req.header("api-key");
 
-    if (!params.user_id || !params.plan) {
-      return c.json({ error: "Missing user_id or plan in URL" }, 400);
-    }
-    // @ts-ignore
-    const answer = await ExploreTreeService(c, input, params);
-    return c.json({ result: answer });
-  } catch (err) {
-    console.error(err);
+  if (!apiKey) {
+    return c.json({ error: "API key is missing from headers" }, 401);
   }
+
+  const answer = await ExploreTreeService({ ...body, apiKey });
+  return c.json({ result: answer });
 };
 
 export const GeneratePlanController = async (c: Context) => {
-  try {
-    const input = await c.req.json<plannerBodyType>();
-    // @ts-ignore
-    const answer = await GeneratePlanService(c, input);
-    return c.json({ result: answer });
-  } catch (err) {
-    console.error(err);
+  const body = await c.req.json<IPlannerBody>();
+  const apiKey = c.req.header("api-key");
+
+  if (!apiKey) {
+    return c.json({ error: "API key is missing from headers" }, 401);
   }
+
+  const answer = await GeneratePlanService({ ...body, apiKey });
+  return c.json({ result: answer });
+};
+
+export const FetchModelsController = async (c: Context) => {
+  const { provider } = c.req.param();
+
+  return c.json({ result: await FetchModelsService(c, provider) });
 };

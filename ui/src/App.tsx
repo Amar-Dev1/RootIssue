@@ -1,245 +1,220 @@
-import { useState, useEffect } from 'react';
-import { getActiveTabUrl, parseGitHubIssueUrl, fetchIssueDetails, fetchRepoTree } from './services/github';
-import { getSettings, saveSettings, generateUUID, getCachedPlan, setCachedPlan, getGenerationStatus, setGenerationStatus, type UserSettings, type GenerationStatus } from './utils/storage';
-import type { State, IssueContext } from './types';
+import { useState, useEffect } from "react";
+import {
+  parseGitHubIssueUrl,
+  fetchIssueDetails,
+  fetchRepoTree,
+  fetchFilesContent,
+} from "./services/github";
+import { getSettings, saveSettings, type UserSettings } from "./utils/storage";
+import { SendToExplorerLLM, SendToPlannerLLM } from "./services/index";
 
 // Components
-import { Header } from './components/Header';
-import { Footer } from './components/Footer';
-import { IssueContextCard } from './components/IssueContextCard';
-
-// Views
-import { OnboardingView } from './components/views/OnboardingView';
-import { IdleView } from './components/views/IdleView';
-import { LoadingView } from './components/views/LoadingView';
-import { ResultView } from './components/views/ResultView';
-import { ErrorView } from './components/views/ErrorView';
-
-const SAMPLE_PLAN = `## 🎯 Problem
-The current chat implementation is hardcoded to a single provider, limiting model choice and quality.
-
-## 🛠️ Solution
-Abstract chat providers behind an interface and implement a factory for dynamic selection.
-
-## 📋 Execution Steps
-- [ ] **package.json** -> Add \`@google/generative-ai\` and \`@anthropic-ai/sdk\`.
-- [ ] **src/providers/types.ts** -> Define \`ChatProvider\` interface.
-- [ ] **src/providers/openai.ts** -> Implement OpenAI provider.
-- [ ] **src/providers/anthropic.ts** -> Implement Anthropic provider.
-- [ ] **src/providers/gemini.ts** -> Implement Gemini provider.
-- [ ] **src/providers/factory.ts** -> Create provider factory function.
-- [ ] **src/botService.ts** -> Inject and use the provider factory.
-
-## 💻 Code Architecture
-\`\`\`typescript
-interface ChatProvider {
- generate(prompt: string): Promise<string>;
-}
-// Factory function to return appropriate provider instance
-\`\`\`
-`;
+import { Header } from "./components/Header";
+import { ConfigPanel } from "./components/views/ConfigPanel";
+import { LoadingView } from "./components/views/LoadingView";
+import { ResultView } from "./components/views/ResultView";
+import { ErrorView } from "./components/views/ErrorView";
+import type { IssueContext } from "./types";
 
 export default function App() {
-  const [currentState, setCurrentState] = useState<State>('idle');
-  const [credits, setCredits] = useState(5);
   const [globalSettings, setGlobalSettings] = useState<UserSettings>({});
-  
-  const [activeIssueContext, setActiveIssueContext] = useState<IssueContext | null>(null);
-  const [repoFiles, setRepoFiles] = useState<string[]>([]);
-  const [generatedPlan, setGeneratedPlan] = useState('');
-  
-  const [loadingStep, setLoadingStep] = useState(0);
-  const [errorMessage, setErrorMessage] = useState('');
 
-  // Initialize extension settings
+  // Right side state
+  const [rightPanelState, setRightPanelState] = useState<
+    "idle" | "loading" | "result" | "error"
+  >("idle");
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [generatedPlan, setGeneratedPlan] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  // Initialize settings
   useEffect(() => {
     const init = async () => {
       const settings = await getSettings();
-      if (!settings.userId) {
-        settings.userId = generateUUID();
-        settings.credits = 5;
-        settings.plan = 'free';
-        await saveSettings(settings);
+      if (settings.credits === undefined) {
+        settings.credits = 3;
+        await saveSettings({ credits: 3 });
       }
-
-      setCredits(settings.credits ?? 5);
       setGlobalSettings(settings);
 
-      if (!settings.githubToken && settings.isPrivate !== false) {
-        setCurrentState('onboarding');
-      } else {
-        setCurrentState('idle');
-        prepareIdleState(settings);
-      }
+      // Restore session state
+      if (settings.panelState) setRightPanelState(settings.panelState);
+      if (settings.loadingStep) setLoadingStep(settings.loadingStep);
+      if (settings.generatedPlan) setGeneratedPlan(settings.generatedPlan);
+      if (settings.errorMessage) setErrorMessage(settings.errorMessage);
     };
     init();
   }, []);
 
-  // Listen to background generation updates and sync popup state
-  useEffect(() => {
-    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
-      if (areaName === 'local' && changes.generationStatus) {
-        const newStatus = changes.generationStatus.newValue as GenerationStatus | undefined;
-        if (newStatus && activeIssueContext) {
-          const issueKey = `${activeIssueContext.owner}/${activeIssueContext.repo}#${activeIssueContext.issueNumber}`;
-          if (newStatus.issueKey === issueKey) {
-            if (newStatus.status === 'loading') {
-              setCurrentState('loading');
-              setLoadingStep(newStatus.step);
-            } else if (newStatus.status === 'success') {
-              setGeneratedPlan(newStatus.plan || SAMPLE_PLAN);
-              setCurrentState('result');
-            } else if (newStatus.status === 'error') {
-              setCurrentState('error');
-            }
-          }
-        }
-      } else if (areaName === 'sync' && changes.credits) {
-        setCredits((changes.credits.newValue as number) ?? 5);
-      }
-    };
-
-    if (typeof chrome !== 'undefined' && chrome.storage) {
-      chrome.storage.onChanged.addListener(handleStorageChange);
-    }
-
-    return () => {
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        chrome.storage.onChanged.removeListener(handleStorageChange);
-      }
-    };
-  }, [activeIssueContext]);
-
-  const prepareIdleState = async (settings: UserSettings) => {
-    try {
-      const url = await getActiveTabUrl();
-      if (url) {
-        const parsed = parseGitHubIssueUrl(url);
-        if (parsed) {
-          const details = await fetchIssueDetails(parsed.owner, parsed.repo, parsed.issueNumber, settings.githubToken);
-          const issueContext = { ...parsed, ...details };
-          setActiveIssueContext(issueContext);
-          
-          const files = await fetchRepoTree(parsed.owner, parsed.repo, settings.githubToken);
-          setRepoFiles(files);
-
-          const issueKey = `${parsed.owner}/${parsed.repo}#${parsed.issueNumber}`;
-
-          // Check if there is currently a background generation task running for this issue
-          const backgroundStatus = await getGenerationStatus();
-          if (backgroundStatus && backgroundStatus.issueKey === issueKey) {
-            if (backgroundStatus.status === 'loading') {
-              setCurrentState('loading');
-              setLoadingStep(backgroundStatus.step);
-              return;
-            } else if (backgroundStatus.status === 'error') {
-              setCurrentState('error');
-              return;
-            }
-          }
-
-          // Restore plan if it was previously cached in the current session
-          const cacheKey = `plan:${parsed.owner}/${parsed.repo}#${parsed.issueNumber}`;
-          const cachedPlan = await getCachedPlan(cacheKey);
-          if (cachedPlan) {
-            setGeneratedPlan(cachedPlan);
-            setCurrentState('result');
-          }
-        } else {
-          console.warn("Not a GitHub issue URL:", url);
-        }
-      } else {
-        console.warn("Could not get active tab URL. Make sure 'tabs' permission is enabled.");
-      }
-    } catch (err: any) {
-      console.error("Failed to fetch issue context or tree:", err);
-      setErrorMessage(err.message || "Failed to fetch issue context.");
-      setCurrentState('error');
-    }
-  };
-
-  const handleSaveToken = async (tokenInput: string, scopePrivate: boolean) => {
-    const updatedToken = tokenInput || globalSettings.githubToken;
-    const newSettings = { ...globalSettings, githubToken: updatedToken, isPrivate: scopePrivate };
-    setGlobalSettings(newSettings);
+  const handleSaveSettings = async (newSettings: Partial<UserSettings>) => {
+    const updated = { ...globalSettings, ...newSettings };
+    setGlobalSettings(updated);
     await saveSettings(newSettings);
-    
-    setCurrentState('idle');
-    prepareIdleState(newSettings);
   };
 
-  const startPlanGeneration = async () => {
-    if (!activeIssueContext) {
-      alert("Please open a GitHub issue to generate a plan.");
+  const updatePanelState = (
+    newState: "idle" | "loading" | "result" | "error",
+    step?: number,
+    plan?: string,
+    error?: string,
+  ) => {
+    setRightPanelState(newState);
+    if (step !== undefined) setLoadingStep(step);
+    if (plan !== undefined) setGeneratedPlan(plan);
+    if (error !== undefined) setErrorMessage(error);
+
+    const newSettings: Partial<UserSettings> = { panelState: newState };
+    if (step !== undefined) newSettings.loadingStep = step;
+    if (plan !== undefined) newSettings.generatedPlan = plan;
+    if (error !== undefined) newSettings.errorMessage = error;
+
+    handleSaveSettings(newSettings);
+  };
+
+  const startPlanGeneration = async (issueUrl: string) => {
+    if (!globalSettings.githubToken) {
+      alert("Please configure a GitHub Access Token first.");
       return;
     }
 
-    if (credits <= 0) {
-      alert("You have 0 credits remaining.");
-      return;
-    }
+    updatePanelState("loading", 1, "", "");
 
-    setCurrentState('loading');
-    setLoadingStep(1);
+    try {
+      const parsed = parseGitHubIssueUrl(issueUrl);
+      if (!parsed) {
+        throw new Error("Invalid GitHub issue URL format.");
+      }
 
-    const issueKey = `${activeIssueContext.owner}/${activeIssueContext.repo}#${activeIssueContext.issueNumber}`;
-    await setGenerationStatus({
-      status: 'loading',
-      step: 1,
-      issueKey
-    });
+      // Fetch issue context
+      const details = await fetchIssueDetails(
+        parsed.owner,
+        parsed.repo,
+        parsed.issueNumber,
+        globalSettings.githubToken,
+      );
+      const issueContext: IssueContext = { ...parsed, ...details };
 
-    if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
-      chrome.runtime.sendMessage({
-        type: 'START_PLAN_GENERATION',
-        payload: {
-          activeIssueContext,
-          repoFiles,
-          globalSettings,
-          credits
-        }
-      });
-    } else {
-      // Fallback for dev mode where extension APIs are missing
-      console.log("Dev environment detected: simulating background generation");
-      setTimeout(async () => {
-        await setGenerationStatus({ status: 'loading', step: 2, issueKey });
-        setLoadingStep(2);
-        setTimeout(async () => {
-          await setGenerationStatus({ status: 'loading', step: 3, issueKey });
-          setLoadingStep(3);
-          setTimeout(async () => {
-            const mockPlan = SAMPLE_PLAN;
-            const cacheKey = `plan:${activeIssueContext.owner}/${activeIssueContext.repo}#${activeIssueContext.issueNumber}`;
-            await setCachedPlan(cacheKey, mockPlan);
-            await setGenerationStatus({ status: 'success', step: 3, issueKey, plan: mockPlan });
-            setGeneratedPlan(mockPlan);
-            setCurrentState('result');
-          }, 1500);
-        }, 1500);
-      }, 1500);
+      // Explore Tree to find target files
+      const treeFiles = await fetchRepoTree(
+        parsed.owner,
+        parsed.repo,
+        globalSettings.githubToken,
+      );
+      const explorerContext = `\n\n${treeFiles.join(", ")}`;
+
+      // Resolve effective credentials — credits mode always wins over stale dropdown values
+      const isCreditsMode = !globalSettings.apiKey;
+      const effectiveProvider = isCreditsMode ? "google" : globalSettings.provider;
+      const effectiveModel = isCreditsMode ? "gemini-2.5-flash-lite" : globalSettings.model;
+      const effectiveApiKey = isCreditsMode ? import.meta.env.VITE_GEMINI_API_KEY : globalSettings.apiKey;
+
+      const explorerResult = await SendToExplorerLLM(
+        issueContext.fullText,
+        explorerContext,
+        effectiveProvider,
+        effectiveModel,
+        effectiveApiKey,
+      );
+
+      if (!explorerResult || !explorerResult.result) {
+        throw new Error("Explorer model failed to return target files.");
+      }
+
+      const filesToFetch =
+        typeof explorerResult.result === "string"
+          ? explorerResult.result.split(",").map((f: string) => f.trim())
+          : explorerResult.result;
+
+      updatePanelState("loading", 2);
+
+      const filesContentArr = await fetchFilesContent(
+        parsed.owner,
+        parsed.repo,
+        filesToFetch,
+        globalSettings.githubToken,
+      );
+      const filesContentStr = filesContentArr
+        .map((f) => `--- ${f.path} ---\n${f.content}\n`)
+        .join("\n\n");
+
+      updatePanelState("loading", 3);
+
+      const planResult = await SendToPlannerLLM(
+        issueContext.fullText,
+        filesContentStr,
+        effectiveProvider,
+        effectiveModel,
+        effectiveApiKey,
+      );
+
+      const newPlan =
+        typeof planResult?.result === "string"
+          ? planResult.result
+          : planResult?.plan || "";
+
+      if (!newPlan) {
+        throw new Error("Planner model failed to generate a plan.");
+      }
+
+      // If no API key was used, decrement credits
+      if (
+        !globalSettings.apiKey &&
+        globalSettings.credits &&
+        globalSettings.credits > 0
+      ) {
+        await handleSaveSettings({ credits: globalSettings.credits - 1 });
+      }
+
+      updatePanelState("result", 0, newPlan);
+    } catch (err: any) {
+      console.error("Generation error:", err);
+      updatePanelState(
+        "error",
+        0,
+        "",
+        err.message || "An unexpected error occurred.",
+      );
     }
   };
 
   return (
-    <div id="app">
-      <Header credits={credits} />
+    <div className="web-app-container">
+      <Header credits={globalSettings.credits || 0} />
 
-      {currentState !== 'onboarding' && <IssueContextCard context={activeIssueContext} />}
+      <main
+        className={rightPanelState === "idle" ? "centered-view" : "split-view"}
+      >
+        <section
+          className={rightPanelState === "idle" ? "center-panel" : "left-panel"}
+        >
+          <ConfigPanel
+            settings={globalSettings}
+            onSaveSettings={handleSaveSettings}
+            onGeneratePlan={startPlanGeneration}
+            isLoading={rightPanelState === "loading"}
+          />
+        </section>
 
-      {currentState === 'onboarding' && (
-        <OnboardingView 
-          hasExistingToken={!!globalSettings.githubToken}
-          existingIsPrivate={!!globalSettings.isPrivate}
-          onSaveToken={handleSaveToken} 
-        />
-      )}
-      {currentState === 'idle' && <IdleView repoFiles={repoFiles} onGeneratePlan={startPlanGeneration} />}
-      {currentState === 'loading' && <LoadingView loadingStep={loadingStep} />}
-      {currentState === 'result' && <ResultView generatedPlan={generatedPlan || SAMPLE_PLAN} onRegenerate={startPlanGeneration} />}
-      {currentState === 'error' && <ErrorView onRetry={startPlanGeneration} errorMessage={errorMessage} />}
-
-      <Footer onSettingsClick={() => setCurrentState('onboarding')} />
+        {rightPanelState !== "idle" && (
+          <section className="right-panel">
+            {rightPanelState === "loading" && (
+              <LoadingView loadingStep={loadingStep} />
+            )}
+            {rightPanelState === "result" && (
+              <ResultView
+                generatedPlan={generatedPlan}
+                onRegenerate={() => updatePanelState("idle", 0, "")}
+              />
+            )}
+            {rightPanelState === "error" && (
+              <ErrorView
+                onRetry={() => updatePanelState("idle", 0, "")}
+                errorMessage={errorMessage}
+              />
+            )}
+          </section>
+        )}
+      </main>
     </div>
   );
 }

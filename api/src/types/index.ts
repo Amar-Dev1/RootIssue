@@ -1,14 +1,16 @@
-export type urlParamsType = {
-  user_id: string;
-  plan: "Free" | "Premium" | "Enterprise";
+export type modelArguments = {
+  provider?: "google" | "openai" | "anthropic";
+  model?: string;
+  apiKey?: string;
+  maxTokens?: number;
 };
 
-export type explorerBodyType = {
+export interface IExplorerBody extends modelArguments {
   issue: string;
   context: string;
-};
+}
 
-export type plannerBodyType = {
+export interface IPlannerBody extends modelArguments {
   issue: string;
   filesContent: string;
-};
+}
