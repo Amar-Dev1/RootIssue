@@ -106,7 +106,18 @@ export default function App() {
       const isCreditsMode = !globalSettings.apiKey;
       const effectiveProvider = isCreditsMode ? "google" : globalSettings.provider;
       const effectiveModel = isCreditsMode ? "gemini-2.5-flash-lite" : globalSettings.model;
-      const effectiveApiKey = isCreditsMode ? import.meta.env.VITE_GEMINI_API_KEY : globalSettings.apiKey;
+      const effectiveApiKey = isCreditsMode
+        ? import.meta.env.VITE_GEMINI_API_KEY
+        : globalSettings.apiKey;
+
+      // Guard: credits mode requires the env key to be baked in at build time
+      if (!effectiveApiKey) {
+        throw new Error(
+          isCreditsMode
+            ? "Free credits are unavailable: the deployment is missing VITE_GEMINI_API_KEY. Please use your own API key."
+            : "No API key provided. Please enter your LLM API key in settings."
+        );
+      }
 
       const explorerResult = await SendToExplorerLLM(
         issueContext.fullText,
@@ -115,6 +126,7 @@ export default function App() {
         effectiveModel,
         effectiveApiKey,
       );
+
 
       if (!explorerResult || !explorerResult.result) {
         throw new Error("Explorer model failed to return target files.");
