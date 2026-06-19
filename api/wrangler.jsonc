@@ -12,8 +12,11 @@
 	// 	},
 	// ],
 	"compatibility_flags": [
-	  "nodejs_compat"
+		"nodejs_compat"
 	],
+	"vars": {
+		"ALLOWED_ORIGIN": "https://rootissue.netlify.app"
+	},
 	// "vars": {
 	//   "MY_VAR": "my-variable"
 	// },
