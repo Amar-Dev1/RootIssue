@@ -32,13 +32,15 @@ No context switching. No manual digging. Just paste a GitHub issue URL and click
 
 You can bring your own API key (Google, OpenAI, or Anthropic) or use the **3 built-in free credits** powered by the backend's own Gemini key.
 
----
-
 ## 🎬 Demo
 
-> *(Coming soon — short screen recording of the web app in action)*
+<div align="center">
 
----
+[![Demo Preview](https://img.youtube.com/vi/Ydj__5RD5aY/hqdefault.jpg)](https://www.youtube.com/watch?v=Ydj__5RD5aY)
+
+*Click the image above to watch the full video.*
+
+</div>   
 
 ## ⚙️ How It Works
 
